@@ -10,7 +10,7 @@ KUBESPRAY_DIR=./cache/kubespray-${KUBESPRAY_VERSION}
 umask 022
 
 mkdir -p ./cache
-mkdir -p outputs/files/
+mkdir -p ${OUTPUT_DIR}/files/
 
 remove_kubespray_cache_dir() {
     if [ -e ${KUBESPRAY_DIR} ]; then
@@ -31,7 +31,7 @@ if [[ $KUBESPRAY_VERSION =~ ^[0-9a-f]{7,40}$ ]]; then
     }
     cd - >/dev/null
 
-    tar czf outputs/files/${KUBESPRAY_TARBALL} -C ./cache kubespray-${KUBESPRAY_VERSION}
+    tar czf ${OUTPUT_DIR}/files/${KUBESPRAY_TARBALL} -C ./cache kubespray-${KUBESPRAY_VERSION}
     echo "Done (commit checkout)."
     exit 0
 fi
@@ -41,22 +41,22 @@ if [ $KUBESPRAY_VERSION == "master" ] || [[ $KUBESPRAY_VERSION =~ ^release- ]]; 
     echo "===> Checkout kubespray branch : $KUBESPRAY_VERSION"
     if [ ! -e ${KUBESPRAY_DIR} ]; then
         git clone -b $KUBESPRAY_VERSION https://github.com/kubernetes-sigs/kubespray.git ${KUBESPRAY_DIR}
-        tar czf outputs/files/${KUBESPRAY_TARBALL} -C ./cache kubespray-${KUBESPRAY_VERSION}
+        tar czf ${OUTPUT_DIR}/files/${KUBESPRAY_TARBALL} -C ./cache kubespray-${KUBESPRAY_VERSION}
     fi
     exit 0
 fi
 
 
-if [ ! -e outputs/files/${KUBESPRAY_TARBALL} ]; then
+if [ ! -e ${OUTPUT_DIR}/files/${KUBESPRAY_TARBALL} ]; then
     echo "===> Download ${KUBESPRAY_TARBALL}"
-    curl -SL https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v${KUBESPRAY_VERSION}.tar.gz >outputs/files/${KUBESPRAY_TARBALL} || exit 1
+    curl -SL https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v${KUBESPRAY_VERSION}.tar.gz >${OUTPUT_DIR}/files/${KUBESPRAY_TARBALL} || exit 1
 
     remove_kubespray_cache_dir
 fi
 
 if [ ! -e ${KUBESPRAY_DIR} ]; then
     echo "===> Extract ${KUBESPRAY_TARBALL}"
-    tar xzf outputs/files/${KUBESPRAY_TARBALL}
+    tar xzf ${OUTPUT_DIR}/files/${KUBESPRAY_TARBALL}
 
     mv kubespray-${KUBESPRAY_VERSION} ${KUBESPRAY_DIR}
 

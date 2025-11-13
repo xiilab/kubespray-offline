@@ -20,3 +20,7 @@ REGISTRY_PORT=${REGISTRY_PORT:-35000}
 
 # Additional container registry hosts
 ADDITIONAL_CONTAINER_REGISTRY_LIST=${ADDITIONAL_CONTAINER_REGISTRY_LIST:-"myregistry.io"}
+
+# Output directory for downloaded files
+# Can be customized for version-specific directories (e.g., outputs-2.28.1)
+OUTPUT_DIR=${OUTPUT_DIR:-outputs}

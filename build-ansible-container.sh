@@ -17,4 +17,4 @@ echo "==> Create ansible container"
 
 cp -f ./ansible-container/kubespray-offline-ansible.tar.gz $IMAGES_DIR/
 
-cp -f ./ansible-container/ansible-container.sh ./outputs/
+cp -f ./ansible-container/ansible-container.sh ./${OUTPUT_DIR}/

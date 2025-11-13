@@ -1,6 +1,6 @@
 #!/bin/bash
 
-IMAGES_DIR=outputs/images
+IMAGES_DIR=${OUTPUT_DIR}/images
 if [ ! -d $IMAGES_DIR ]; then
     mkdir -p $IMAGES_DIR
 fi

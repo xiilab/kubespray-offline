@@ -12,7 +12,7 @@ if [ ! -e $KUBESPRAY_DIR ]; then
     exit 1
 fi
 
-FILES_DIR=outputs/files
+FILES_DIR=${OUTPUT_DIR}/files
 
 # Decide relative directory of file from URL
 #
