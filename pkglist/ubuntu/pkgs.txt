@@ -32,14 +32,14 @@ unzip
 xfsprogs
 
 # compilers (for cffi, etc)
-#gcc
-#libffi-dev
-#libssl-dev
+gcc
+libffi-dev
+libssl-dev
 
 # Others
 firewalld
 lvm2
 
 # nfs
-#nfs-common
-#nfs-kernel-server
+nfs-common
+nfs-kernel-server

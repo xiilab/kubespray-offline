@@ -25,11 +25,11 @@ unzip
 xfsprogs
 
 # compilers (for cffi, etc)
-#gcc
-#annobin
-#libffi-devel
-#openssl-libs
-#openssl-devel
+gcc
+annobin
+libffi-devel
+openssl-libs
+openssl-devel
 
 # others
 audit
@@ -39,5 +39,5 @@ gnupg2
 lvm2
 
 # nfs
-#rpcbind
-#nfs-utils
+rpcbind
+nfs-utils
