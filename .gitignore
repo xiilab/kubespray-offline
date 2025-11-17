@@ -8,3 +8,7 @@ outputs/
 cache/
 .vagrant/
 .venv/
+
+# Overlay가 생성하는 이미지 리스트 파일들 (Submodule에 커밋하지 않음)
+imagelists/astrago.txt
+imagelists/astrago-additional.txt
