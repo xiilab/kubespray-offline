@@ -18,6 +18,9 @@ REGISTRY_VERSION=2.8.3
 # container registry port
 REGISTRY_PORT=${REGISTRY_PORT:-35000}
 
+# nginx http server port
+NGINX_PORT=${NGINX_PORT:-36000}
+
 # Additional container registry hosts
 ADDITIONAL_CONTAINER_REGISTRY_LIST=${ADDITIONAL_CONTAINER_REGISTRY_LIST:-"myregistry.io"}
 

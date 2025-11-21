@@ -18,7 +18,7 @@ $NERDCTL container rm nginx 2>/dev/null
 
 echo "===> Start nginx"
 $NERDCTL container run -d \
-    --network host \
+    -p ${NGINX_PORT}:80 \
     --restart always \
     --name nginx \
     -v ${BASEDIR}:/usr/share/nginx/html \
