@@ -5,6 +5,7 @@
 kubespray*.tar.gz
 kubespray*/
 outputs/
+outputs-*/
 cache/
 .vagrant/
 .venv/
