@@ -1,9 +1,9 @@
 --- a/roles/container-engine/cri-o/templates/crio.conf.j2
 +++ b/roles/container-engine/cri-o/templates/crio.conf.j2
-@@ -7,7 +7,7 @@
- [crio]
+@@ -17,7 +17,7 @@ reload'.
 
- # Path to the "root directory". CRI-O stores all of its data, including containers images, in this directory.
+ # Path to the "root directory". CRI-O stores all of its data, including
+ # containers images, in this directory.
 -root = "/var/lib/containers/storage"
 +root = "{{ crio_root | default('/var/lib/containers/storage') }}"
 
@@ -17,6 +17,6 @@
 +# CRI-O 데이터 저장 위치
 +crio_root: "/var/lib/containers/storage"
 +
- crio_cgroup_manager: "{{ 'systemd' if kube_kubeadm_cgroup_driver is defined and kube_kubeadm_cgroup_driver == 'systemd' else 'cgroupfs' }}"
-
- crio_conmon: "/usr/bin/conmon"
+ crio_cgroup_manager: "{{ kubelet_cgroup_driver | default('systemd') }}"
+ crio_conmon: "{{ bin_dir }}/conmon"
+ crio_enable_metrics: false
