@@ -1,26 +1,21 @@
 #!/bin/bash
 # ============================================
 # setup-ha-registry.sh
-# HA Registry 통합 설정 스크립트
+# HA Registry 설정 스크립트 (Keepalived)
 # ============================================
 #
-# 이 스크립트는 HA Registry 설정의 모든 단계를 통합합니다.
-# 각 노드에서 개별 실행하거나, install.sh에서 원격 호출됩니다.
+# 사전 조건: NFS가 이미 /var/lib/registry에 마운트되어 있어야 함
 #
 # 사용법:
 #   # MASTER 노드
 #   ./setup-ha-registry.sh --master \
 #       --vip 10.61.3.200 \
-#       --nfs-server 10.61.3.100 \
-#       --nfs-path /kube_storage/registry \
 #       --local-ip 10.61.3.11 \
 #       --peer-ip 10.61.3.12
 #
 #   # BACKUP 노드
 #   ./setup-ha-registry.sh --backup \
 #       --vip 10.61.3.200 \
-#       --nfs-server 10.61.3.100 \
-#       --nfs-path /kube_storage/registry \
 #       --local-ip 10.61.3.12 \
 #       --peer-ip 10.61.3.11
 #
@@ -38,37 +33,35 @@ usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-HA Registry 설정 통합 스크립트
+HA Registry 설정 스크립트 (Keepalived 기반)
+
+사전 조건:
+    - NFS가 /var/lib/registry에 마운트되어 있어야 함
+    - setup-all.sh가 실행되어 registry가 동작 중이어야 함
 
 Options:
     --master            MASTER 노드로 설정 (priority=100)
     --backup            BACKUP 노드로 설정 (priority=90)
     --vip <IP>          Registry VIP 주소 (필수)
-    --nfs-server <IP>   NFS 서버 주소 (필수)
-    --nfs-path <PATH>   NFS 경로 (필수)
     --local-ip <IP>     이 노드의 IP 주소 (필수)
     --peer-ip <IP>      상대 노드의 IP 주소 (필수)
     --priority <N>      Keepalived priority (기본: MASTER=100, BACKUP=90)
-    --skip-nfs          NFS 마운트 단계 생략
     --start             설정 후 Keepalived 즉시 시작
     -h, --help          도움말 출력
 
 Examples:
-    # MASTER 노드 설정 (setup-all.sh 실행 후)
-    $0 --master --vip 10.61.3.200 --nfs-server 10.61.3.100 \\
-       --nfs-path /kube_storage/registry \\
+    # MASTER 노드 설정
+    $0 --master --vip 10.61.3.200 \\
        --local-ip 10.61.3.11 --peer-ip 10.61.3.12 --start
 
     # BACKUP 노드 설정
-    $0 --backup --vip 10.61.3.200 --nfs-server 10.61.3.100 \\
-       --nfs-path /kube_storage/registry \\
+    $0 --backup --vip 10.61.3.200 \\
        --local-ip 10.61.3.12 --peer-ip 10.61.3.11 --start
 EOF
     exit 1
 }
 
 # 인자 파싱
-SKIP_NFS=false
 START_NOW=false
 
 while [[ $# -gt 0 ]]; do
@@ -87,14 +80,6 @@ while [[ $# -gt 0 ]]; do
             REGISTRY_VIP="$2"
             shift 2
             ;;
-        --nfs-server)
-            NFS_SERVER="$2"
-            shift 2
-            ;;
-        --nfs-path)
-            NFS_PATH="$2"
-            shift 2
-            ;;
         --local-ip)
             LOCAL_IP="$2"
             shift 2
@@ -106,10 +91,6 @@ while [[ $# -gt 0 ]]; do
         --priority)
             PRIORITY="$2"
             shift 2
-            ;;
-        --skip-nfs)
-            SKIP_NFS=true
-            shift
             ;;
         --start)
             START_NOW=true
@@ -132,46 +113,18 @@ if [ -z "$REGISTRY_VIP" ] || [ -z "$LOCAL_IP" ] || [ -z "$PEER_IP" ]; then
     usage
 fi
 
-if [ "$SKIP_NFS" = false ] && ([ -z "$NFS_SERVER" ] || [ -z "$NFS_PATH" ]); then
-    echo "ERROR: NFS server and path required (or use --skip-nfs)"
-    echo ""
-    usage
-fi
-
 echo "============================================"
-echo "HA Registry Setup"
+echo "HA Registry Setup (Keepalived)"
 echo "============================================"
 echo "Role:         ${STATE} (priority=${PRIORITY})"
 echo "VIP:          ${REGISTRY_VIP}"
 echo "Local IP:     ${LOCAL_IP}"
 echo "Peer IP:      ${PEER_IP}"
-if [ "$SKIP_NFS" = false ]; then
-    echo "NFS Server:   ${NFS_SERVER}"
-    echo "NFS Path:     ${NFS_PATH}"
-fi
 echo "============================================"
 echo ""
 
-# Step 1: NFS 마운트 (SKIP_NFS가 아닌 경우)
-if [ "$SKIP_NFS" = false ]; then
-    echo ">>> Step 1: NFS Mount"
-    echo "--------------------------------------------"
-
-    if [ -f "$SCRIPT_DIR/setup-nfs-registry.sh" ]; then
-        export NFS_SERVER NFS_PATH
-        "$SCRIPT_DIR/setup-nfs-registry.sh"
-    else
-        echo "ERROR: setup-nfs-registry.sh not found in $SCRIPT_DIR"
-        exit 1
-    fi
-    echo ""
-else
-    echo ">>> Step 1: NFS Mount (SKIPPED)"
-    echo ""
-fi
-
-# Step 2: Keepalived 설치
-echo ">>> Step 2: Keepalived Installation"
+# Step 1: Keepalived 설치
+echo ">>> Step 1: Keepalived Installation"
 echo "--------------------------------------------"
 
 if [ -f "$SCRIPT_DIR/install-keepalived.sh" ]; then
@@ -183,9 +136,9 @@ else
 fi
 echo ""
 
-# Step 3: Keepalived 시작 (옵션)
+# Step 2: Keepalived 시작 (옵션)
 if [ "$START_NOW" = true ]; then
-    echo ">>> Step 3: Starting Keepalived"
+    echo ">>> Step 2: Starting Keepalived"
     echo "--------------------------------------------"
 
     # MASTER 노드인 경우, 기존 Registry 중지
@@ -214,7 +167,7 @@ if [ "$START_NOW" = true ]; then
     fi
     echo ""
 else
-    echo ">>> Step 3: Keepalived Start (SKIPPED - use --start to auto-start)"
+    echo ">>> Step 2: Keepalived Start (SKIPPED - use --start to auto-start)"
     echo ""
     echo "To start manually:"
     echo "  sudo systemctl start keepalived"
