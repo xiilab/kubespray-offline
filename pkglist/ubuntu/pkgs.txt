@@ -46,3 +46,5 @@ nfs-kernel-server
 
 # ha registry
 keepalived
+libsnmp40
+libnfnetlink0

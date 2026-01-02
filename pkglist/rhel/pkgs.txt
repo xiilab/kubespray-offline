@@ -44,3 +44,5 @@ nfs-utils
 
 # ha registry
 keepalived
+net-snmp-libs
+libnfnetlink
