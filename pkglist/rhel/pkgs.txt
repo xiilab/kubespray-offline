@@ -41,3 +41,6 @@ lvm2
 # nfs
 rpcbind
 nfs-utils
+
+# ha registry
+keepalived

@@ -43,3 +43,6 @@ lvm2
 # nfs
 nfs-common
 nfs-kernel-server
+
+# ha registry
+keepalived
