@@ -15,6 +15,41 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# 로컬 패키지에서 설치하는 함수
+install_from_local_rhel() {
+    local pkg_name="$1"
+    local pkg_dir="$SCRIPT_DIR/rpms/local"
+
+    if [ -d "$pkg_dir" ]; then
+        echo "Searching for $pkg_name in $pkg_dir..."
+        local pkg_file=$(find "$pkg_dir" -name "${pkg_name}*.rpm" 2>/dev/null | head -1)
+        if [ -n "$pkg_file" ]; then
+            echo "Found: $pkg_file"
+            rpm -ivh --nodeps "$pkg_file" || yum localinstall -y "$pkg_file"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+install_from_local_ubuntu() {
+    local pkg_name="$1"
+    local pkg_dir="$SCRIPT_DIR/debs/local"
+
+    if [ -d "$pkg_dir" ]; then
+        echo "Searching for $pkg_name in $pkg_dir..."
+        local pkg_file=$(find "$pkg_dir" -name "${pkg_name}*.deb" 2>/dev/null | head -1)
+        if [ -n "$pkg_file" ]; then
+            echo "Found: $pkg_file"
+            dpkg -i "$pkg_file" || apt-get install -f -y
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # 필수 환경변수 확인
 REGISTRY_VIP="${REGISTRY_VIP:?REGISTRY_VIP is required}"
 LOCAL_IP="${LOCAL_IP:?LOCAL_IP is required}"
@@ -39,24 +74,39 @@ echo "============================================"
 # 1. Keepalived 설치
 echo ""
 echo "==> Installing Keepalived..."
+
 if command -v apt-get &> /dev/null; then
-    if ! dpkg -l | grep -q keepalived; then
-        apt-get update -qq
-        apt-get install -y keepalived
-    else
+    # Debian/Ubuntu
+    if dpkg -l | grep -q "^ii.*keepalived"; then
         echo "keepalived already installed"
-    fi
-elif command -v yum &> /dev/null; then
-    if ! rpm -q keepalived &> /dev/null; then
-        yum install -y keepalived
     else
-        echo "keepalived already installed"
+        echo "Installing keepalived..."
+        if ! install_from_local_ubuntu "keepalived"; then
+            echo "Local package not found, trying apt-get..."
+            apt-get update -qq && apt-get install -y keepalived
+        fi
     fi
 elif command -v dnf &> /dev/null; then
-    if ! rpm -q keepalived &> /dev/null; then
-        dnf install -y keepalived
-    else
+    # Fedora/RHEL 8+
+    if rpm -q keepalived &> /dev/null; then
         echo "keepalived already installed"
+    else
+        echo "Installing keepalived..."
+        if ! install_from_local_rhel "keepalived"; then
+            echo "Local package not found, trying dnf..."
+            dnf install -y keepalived
+        fi
+    fi
+elif command -v yum &> /dev/null; then
+    # RHEL/CentOS 7
+    if rpm -q keepalived &> /dev/null; then
+        echo "keepalived already installed"
+    else
+        echo "Installing keepalived..."
+        if ! install_from_local_rhel "keepalived"; then
+            echo "Local package not found, trying yum..."
+            yum install -y keepalived
+        fi
     fi
 else
     echo "ERROR: Unknown package manager"

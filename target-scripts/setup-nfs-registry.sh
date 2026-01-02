@@ -15,6 +15,8 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # 인자 또는 환경변수에서 설정 읽기
 NFS_SERVER="${1:-${NFS_SERVER:?NFS_SERVER is required}}"
 NFS_PATH="${2:-${NFS_PATH:?NFS_PATH is required}}"
@@ -28,30 +30,76 @@ echo "NFS Path:   ${NFS_PATH}"
 echo "Mount Dir:  ${REGISTRY_DIR}"
 echo "============================================"
 
+# 로컬 패키지에서 설치하는 함수
+install_from_local_rhel() {
+    local pkg_name="$1"
+    local pkg_dir="$SCRIPT_DIR/rpms/local"
+
+    if [ -d "$pkg_dir" ]; then
+        echo "Searching for $pkg_name in $pkg_dir..."
+        local pkg_file=$(find "$pkg_dir" -name "${pkg_name}*.rpm" 2>/dev/null | head -1)
+        if [ -n "$pkg_file" ]; then
+            echo "Found: $pkg_file"
+            rpm -ivh --nodeps "$pkg_file" || yum localinstall -y "$pkg_file"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+install_from_local_ubuntu() {
+    local pkg_name="$1"
+    local pkg_dir="$SCRIPT_DIR/debs/local"
+
+    if [ -d "$pkg_dir" ]; then
+        echo "Searching for $pkg_name in $pkg_dir..."
+        local pkg_file=$(find "$pkg_dir" -name "${pkg_name}*.deb" 2>/dev/null | head -1)
+        if [ -n "$pkg_file" ]; then
+            echo "Found: $pkg_file"
+            dpkg -i "$pkg_file" || apt-get install -f -y
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # 1. NFS 클라이언트 패키지 설치
 echo ""
 echo "==> Installing NFS client packages..."
+
 if command -v apt-get &> /dev/null; then
     # Debian/Ubuntu
-    if ! dpkg -l | grep -q nfs-common; then
-        apt-get update -qq
-        apt-get install -y nfs-common
-    else
+    if dpkg -l | grep -q "^ii.*nfs-common"; then
         echo "nfs-common already installed"
-    fi
-elif command -v yum &> /dev/null; then
-    # RHEL/CentOS
-    if ! rpm -q nfs-utils &> /dev/null; then
-        yum install -y nfs-utils
     else
-        echo "nfs-utils already installed"
+        echo "Installing nfs-common..."
+        # 먼저 로컬 패키지에서 시도
+        if ! install_from_local_ubuntu "nfs-common"; then
+            echo "Local package not found, trying apt-get..."
+            apt-get update -qq && apt-get install -y nfs-common
+        fi
     fi
 elif command -v dnf &> /dev/null; then
     # Fedora/RHEL 8+
-    if ! rpm -q nfs-utils &> /dev/null; then
-        dnf install -y nfs-utils
-    else
+    if rpm -q nfs-utils &> /dev/null; then
         echo "nfs-utils already installed"
+    else
+        echo "Installing nfs-utils..."
+        if ! install_from_local_rhel "nfs-utils"; then
+            echo "Local package not found, trying dnf..."
+            dnf install -y nfs-utils
+        fi
+    fi
+elif command -v yum &> /dev/null; then
+    # RHEL/CentOS 7
+    if rpm -q nfs-utils &> /dev/null; then
+        echo "nfs-utils already installed"
+    else
+        echo "Installing nfs-utils..."
+        if ! install_from_local_rhel "nfs-utils"; then
+            echo "Local package not found, trying yum..."
+            yum install -y nfs-utils
+        fi
     fi
 else
     echo "WARNING: Unknown package manager, assuming NFS client is installed"
