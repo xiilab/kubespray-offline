@@ -71,12 +71,21 @@ echo "Local IP:     ${LOCAL_IP}"
 echo "Peer IP:      ${PEER_IP}"
 echo "============================================"
 
-# 1. Keepalived 설치
+# 1. Keepalived 및 의존성 설치
 echo ""
-echo "==> Installing Keepalived..."
+echo "==> Installing Keepalived and dependencies..."
 
 if command -v apt-get &> /dev/null; then
     # Debian/Ubuntu
+    # 의존성 패키지 먼저 설치
+    for dep_pkg in libnfnetlink0 libsnmp40; do
+        if ! dpkg -l | grep -q "^ii.*${dep_pkg}"; then
+            echo "Installing dependency: $dep_pkg"
+            install_from_local_ubuntu "$dep_pkg" || apt-get install -y "$dep_pkg" 2>/dev/null || true
+        fi
+    done
+
+    # keepalived 설치
     if dpkg -l | grep -q "^ii.*keepalived"; then
         echo "keepalived already installed"
     else
@@ -88,6 +97,15 @@ if command -v apt-get &> /dev/null; then
     fi
 elif command -v dnf &> /dev/null; then
     # Fedora/RHEL 8+
+    # 의존성 패키지 먼저 설치
+    for dep_pkg in libnfnetlink net-snmp-libs; do
+        if ! rpm -q "$dep_pkg" &> /dev/null; then
+            echo "Installing dependency: $dep_pkg"
+            install_from_local_rhel "$dep_pkg" || dnf install -y "$dep_pkg" 2>/dev/null || true
+        fi
+    done
+
+    # keepalived 설치
     if rpm -q keepalived &> /dev/null; then
         echo "keepalived already installed"
     else
@@ -99,6 +117,15 @@ elif command -v dnf &> /dev/null; then
     fi
 elif command -v yum &> /dev/null; then
     # RHEL/CentOS 7
+    # 의존성 패키지 먼저 설치
+    for dep_pkg in libnfnetlink net-snmp-libs; do
+        if ! rpm -q "$dep_pkg" &> /dev/null; then
+            echo "Installing dependency: $dep_pkg"
+            install_from_local_rhel "$dep_pkg" || yum install -y "$dep_pkg" 2>/dev/null || true
+        fi
+    done
+
+    # keepalived 설치
     if rpm -q keepalived &> /dev/null; then
         echo "keepalived already installed"
     else
