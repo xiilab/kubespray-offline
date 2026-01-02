@@ -4,6 +4,8 @@
 # Keepalived 설치 및 HA Registry 설정
 # ============================================
 #
+# 사전 조건: setup-all.sh 실행 후 (로컬 repo 사용 가능)
+#
 # 사용법:
 #   export REGISTRY_VIP="10.61.3.200"
 #   export LOCAL_IP="10.61.3.11"
@@ -14,41 +16,6 @@
 #
 
 set -e
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
-# 로컬 패키지에서 설치하는 함수
-install_from_local_rhel() {
-    local pkg_name="$1"
-    local pkg_dir="$SCRIPT_DIR/rpms/local"
-
-    if [ -d "$pkg_dir" ]; then
-        echo "Searching for $pkg_name in $pkg_dir..."
-        local pkg_file=$(find "$pkg_dir" -name "${pkg_name}*.rpm" 2>/dev/null | head -1)
-        if [ -n "$pkg_file" ]; then
-            echo "Found: $pkg_file"
-            rpm -ivh --nodeps "$pkg_file" || yum localinstall -y "$pkg_file"
-            return 0
-        fi
-    fi
-    return 1
-}
-
-install_from_local_ubuntu() {
-    local pkg_name="$1"
-    local pkg_dir="$SCRIPT_DIR/debs/local"
-
-    if [ -d "$pkg_dir" ]; then
-        echo "Searching for $pkg_name in $pkg_dir..."
-        local pkg_file=$(find "$pkg_dir" -name "${pkg_name}*.deb" 2>/dev/null | head -1)
-        if [ -n "$pkg_file" ]; then
-            echo "Found: $pkg_file"
-            dpkg -i "$pkg_file" || apt-get install -f -y
-            return 0
-        fi
-    fi
-    return 1
-}
 
 # 필수 환경변수 확인
 REGISTRY_VIP="${REGISTRY_VIP:?REGISTRY_VIP is required}"
@@ -71,69 +38,30 @@ echo "Local IP:     ${LOCAL_IP}"
 echo "Peer IP:      ${PEER_IP}"
 echo "============================================"
 
-# 1. Keepalived 및 의존성 설치
+# 1. Keepalived 설치
 echo ""
-echo "==> Installing Keepalived and dependencies..."
+echo "==> Installing Keepalived..."
 
 if command -v apt-get &> /dev/null; then
     # Debian/Ubuntu
-    # 의존성 패키지 먼저 설치
-    for dep_pkg in libnfnetlink0 libsnmp40; do
-        if ! dpkg -l | grep -q "^ii.*${dep_pkg}"; then
-            echo "Installing dependency: $dep_pkg"
-            install_from_local_ubuntu "$dep_pkg" || apt-get install -y "$dep_pkg" 2>/dev/null || true
-        fi
-    done
-
-    # keepalived 설치
     if dpkg -l | grep -q "^ii.*keepalived"; then
         echo "keepalived already installed"
     else
-        echo "Installing keepalived..."
-        if ! install_from_local_ubuntu "keepalived"; then
-            echo "Local package not found, trying apt-get..."
-            apt-get update -qq && apt-get install -y keepalived
-        fi
+        apt-get update -qq && apt-get install -y keepalived
     fi
 elif command -v dnf &> /dev/null; then
     # Fedora/RHEL 8+
-    # 의존성 패키지 먼저 설치
-    for dep_pkg in libnfnetlink net-snmp-libs; do
-        if ! rpm -q "$dep_pkg" &> /dev/null; then
-            echo "Installing dependency: $dep_pkg"
-            install_from_local_rhel "$dep_pkg" || dnf install -y "$dep_pkg" 2>/dev/null || true
-        fi
-    done
-
-    # keepalived 설치
     if rpm -q keepalived &> /dev/null; then
         echo "keepalived already installed"
     else
-        echo "Installing keepalived..."
-        if ! install_from_local_rhel "keepalived"; then
-            echo "Local package not found, trying dnf..."
-            dnf install -y keepalived
-        fi
+        dnf install -y keepalived
     fi
 elif command -v yum &> /dev/null; then
     # RHEL/CentOS 7
-    # 의존성 패키지 먼저 설치
-    for dep_pkg in libnfnetlink net-snmp-libs; do
-        if ! rpm -q "$dep_pkg" &> /dev/null; then
-            echo "Installing dependency: $dep_pkg"
-            install_from_local_rhel "$dep_pkg" || yum install -y "$dep_pkg" 2>/dev/null || true
-        fi
-    done
-
-    # keepalived 설치
     if rpm -q keepalived &> /dev/null; then
         echo "keepalived already installed"
     else
-        echo "Installing keepalived..."
-        if ! install_from_local_rhel "keepalived"; then
-            echo "Local package not found, trying yum..."
-            yum install -y keepalived
-        fi
+        yum install -y keepalived
     fi
 else
     echo "ERROR: Unknown package manager"
